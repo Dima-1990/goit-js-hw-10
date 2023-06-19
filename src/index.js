@@ -1,68 +1,75 @@
-﻿import debounce from 'lodash.debounce';
-import Notiflix from 'notiflix';
 import './css/styles.css';
-import { fetchCountries } from './js/fetchCountries';
+import { fetchBreeds } from './js/cat-api';
+import { fetchCatByBreed } from './js/cat-api';
+import Notiflix from 'notiflix';
 
-const DEBOUNCE_DELAY = 300;
 
-const input = document.querySelector("#search-box");
-const list = document.querySelector(".country-list");
-const div = document.querySelector(".country-info");
+const breedSelect = document.querySelector('.breed-select');
+const catInfo = document.querySelector('.cat-info');
+const loaderText = document.querySelector('.loader');
 
-let searchCountryName = '';
 
-input.addEventListener("input", debounce(onInputChange, DEBOUNCE_DELAY));
 
-function onInputChange() {
-    searchCountryName = input.value.trim();
-    if (searchCountryName === '') {
-        clearAll();
-        return;
-    } else fetchCountries(searchCountryName).then(countryNames => {
-        if (countryNames.length < 2) {
-            createCountrieCard(countryNames);
-            Notiflix.Notify.success('Here your result');
-        } else if (countryNames.length < 10 && countryNames.length > 1) {
-            createCountrieList(countryNames);
-            Notiflix.Notify.success('Here your results');
-        } else {
-            clearAll();
-            Notiflix.Notify.info('Too many matches found. Please enter a more specific name.');
-        };
+loaderText.classList.add("invisible");
+
+
+function fillList() {
+  loaderText.classList.remove("invisible");
+
+  fetchBreeds()
+    .then((data) => {
+      const breedList = data.map((item) => ({ name: item.name, id: item.id }));
+      breedSelect.insertAdjacentHTML('afterbegin', breedList.map(({ id, name }) =>
+        `<option value = "${id}">${name}</option>`)
+        .join(''));
     })
-        .catch(() => {
-        clearAll();
-        Notiflix.Notify.failure('Oops, there is no country with that name.');
-    });
-};live_7EQcmdc6cjfAS5dGTnZaYoR5ykk0CvHNDHPu4nFne8uuHbiKYW4e8Nl2qma0Nz5H;
-
-function createCountrieCard(country) {
-    clearAll();
-    const c = country[0];
-    const readyCard = `<div class="country-card">
-        <div class="country-card--header">
-            <img src="${c.flags.svg}" alt="Country flag" width="55", height="35">
-            <h2 class="country-card--name"> ${c.name.official}</h2>
-        </div>
-            <p class="country-card--field">Capital: <span class="country-value">${c.capital}</span></p>
-            <p class="country-card--field">Population: <span class="country-value">${c.population}</span></p>
-            <p class="country-card--field">Languages: <span class="country-value">${Object.values(c.languages).join(',')}</span></p>
-    </div>`
-    div.innerHTML = readyCard;
+    .catch(() =>
+      Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!')
+  );
+  
+  loaderText.classList.add("invisible");
 };
 
-function createCountrieList(country) {
-    clearAll();
-    const readyList = country.map((c) => 
-        `<li class="country-list--item">
-            <img src="${c.flags.svg}" alt="Country flag" width="40", height="30">
-            <span class="country-list--name">${c.name.official}</span>
-        </li>`)
-        .join("");
-    list.insertAdjacentHTML('beforeend', readyList);
-};
+fillList();
 
-function clearAll() {
-  list.innerHTML = '';
-  div.innerHTML = '';
+breedSelect.addEventListener('change', () => {
+  
+  loaderText.classList.remove("invisible");
+
+  clearCatCard();
+    const value = breedSelect.options[breedSelect.selectedIndex].value;
+    const name = breedSelect.options[breedSelect.selectedIndex].text;
+    
+  fetchCatByBreed(value)
+    .then(catData => {
+      loaderText.classList.add("invisible");
+      createCatCard(catData, name); 
+  })
+    .catch(() => {
+      loaderText.classList.add("invisible");
+      Notiflix.Notify.failure('Oops! Something went wrong! Try reloading the page!')
+    })
+    
+});
+
+function createCatCard(cats, title) {
+  
+  const cat = cats[0];
+
+  const markup = `
+    <div>
+    <img src="${cat.url}" class = "cat-img" alt="cat" width="600">
+    </div>
+    <div>
+    <h2>${title}</h2>
+    <p> ${cat.breeds[0].description}</p>
+    <h3>Temperamnet</h3>
+    <p class ="cat-temp"> ${cat.breeds[0].temperament}</p> 
+    </div> 
+    `;
+    catInfo.insertAdjacentHTML('afterbegin', markup);
+  };
+
+function clearCatCard() {
+  catInfo.innerHTML = '';
 };
